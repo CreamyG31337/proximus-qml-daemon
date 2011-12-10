@@ -1,0 +1,2 @@
+S 15 com.nokia.maemo H 40 727dfa84afa002dc069943f97be31897781f5322 R 29 usr/local/bin/proximus-daemon
+S 15 com.nokia.maemo H 40 a7875e1fba20d0140a1829ad369b7d630717464b R 42 var/lib/dpkg/info/proximus-daemon.postinst

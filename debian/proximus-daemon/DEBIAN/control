@@ -1,0 +1,12 @@
+Package: proximus-daemon
+Version: 0.0.1
+Architecture: armel
+Maintainer: unknown <>
+Installed-Size: 90
+Section: user/other
+Priority: optional
+Homepage: <insert the upstream URL, if relevant>
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
+Maemo-Display-Name: proximus-daemon
+Aegis-Manifest: included
