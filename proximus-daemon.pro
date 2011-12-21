@@ -36,12 +36,8 @@ OTHER_FILES += \
     qtc_packaging/debian_harmattan/control \
     qtc_packaging/debian_harmattan/compat \
     qtc_packaging/debian_harmattan/changelog \
-    qtc_packaging/debian_harmattan/proximus-daemon.postinst
+    qtc_packaging/debian_harmattan/proximus-daemon.postinst \
+    qtc_packaging/debian_harmattan/proximus-daemon.prerm
 
-
-
-
-
-
-
-
+INCLUDEPATH += /usr/include/qt4
+INCLUDEPATH += /usr/include/applauncherd

@@ -15,9 +15,9 @@ Changes:
  .
    * Initial Release.
 Checksums-Sha1: 
- e1efdf17742a6586672adda7ca8b8bf5be8aa144 28294 proximus-daemon_0.0.1_armel.deb
+ 04adbbb4604b4299fce23211b6d2bf1787317967 29596 proximus-daemon_0.0.1_armel.deb
 Checksums-Sha256: 
- d98fdc0c2c9af1e7c9cf8557f7748ad461709f23f18d6d3d8cd19bade5b3e167 28294 proximus-daemon_0.0.1_armel.deb
+ 78f862b67f1a57e0e59de7bb80860a427e6b43c97c2996dba30134e1c1b43779 29596 proximus-daemon_0.0.1_armel.deb
 Files: 
- 4bd94229dffe52b9117b75fd9d1a6375 28294 user/other optional proximus-daemon_0.0.1_armel.deb
+ b240473b89858cd6e6775c66283e4f1b 29596 user/other optional proximus-daemon_0.0.1_armel.deb
 Maemo-Display-Name: proximus-daemon

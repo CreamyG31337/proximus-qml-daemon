@@ -3,24 +3,26 @@
 
 #include <QtCore/QCoreApplication>
 #include <QtGui/QMainWindow>
-#include <QSystemDeviceInfo>
+#include <QtSystemInfo/QSystemDeviceInfo>
 #include <QtCore/QPointer>
-#include <QGeoPositionInfoSource>
-#include <QGeoPositionInfo>
-#include <QGeoSatelliteInfoSource>
-#include <QGeoSatelliteInfo>
-#include <QGeoCoordinate>
-#include <QGeoAreaMonitor>
+#include <QtLocation/QGeoPositionInfoSource>
+#include <QtLocation/QGeoPositionInfo>
+#include <QtLocation/QGeoSatelliteInfoSource>
+#include <QtLocation/QGeoSatelliteInfo>
+#include <QtLocation/QGeoCoordinate>
+#include <QtLocation/QGeoAreaMonitor>
 #include <QtGui/QMessageBox>
-#include <QTime>
-#include <QOrganizerManager>
-#include <QOrganizerItem>
-#include <QTimer>
-#include <QOrganizerEventTime>
-#include <QOrganizerItemDetail>
-#include <QApplication>
-#include <QSettings>
-#include <QDebug>
+#include <QtCore/QTime>
+#include <QtOrganizer/QOrganizerManager>
+#include <QtOrganizer/QOrganizerItem>
+#include <QtCore/QTimer>
+#include <QtOrganizer/QOrganizerEventTime>
+#include <QtOrganizer/QOrganizerItemDetail>
+#include <QtGui/QApplication>
+#include <QtCore/QSettings>
+#include <QtCore/QDebug>
+#include <QtCore/QFileSystemWatcher>
+
 
 
 #if defined(Q_WS_MAEMO_5)
@@ -143,8 +145,6 @@ public Q_SLOTS:
     void satellitesInViewUpdated(
             const QList<QGeoSatelliteInfo> &satellites);
 
-    void rulesStorageChanged();
-
 private Q_SLOTS:
     /**
      * Initializes one area monitor, returns pointer to it.
@@ -155,21 +155,11 @@ private Q_SLOTS:
      */
     void startSatelliteMonitor();
 
-   // void on_btnNewRule_clicked();
-
-   // void on_chkGPSMode_clicked();
-
-   // void on_btnEdit_clicked();
-
-  //  void on_btnDelete_clicked();
-
-  //  void on_listWidgetRules_currentTextChanged(const QString &currentText);
-
-  //  void on_btnEnable_clicked();
-
     void updateCalendar();
 
     void checkStatus(Rule* ruleStruct);
+
+    void rulesStorageChanged();
 
 private:
     QPointer<QGeoSatelliteInfoSource> satelliteInfoSource;
@@ -181,7 +171,8 @@ private:
     void startGPS();
     QPointer<QSettings> settings;
     QHash<QString, Rule*> Rules;
-
+    QPointer<QFileSystemWatcher> fswatcher;
+    QPointer<QSystemAlignedTimer> calTimer;
 };
 
 #endif // CONTROLLER_H

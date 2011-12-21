@@ -2,41 +2,61 @@
 #include "profileclient.h"
 
 Controller::Controller(QObject *parent) :
-    QObject(parent), settings(new QSettings("FakeCompany","Proximus"))
-{
+    QObject(parent), settings(new QSettings("/home/user/.config/FakeCompany/Proximus.conf",QSettings::NativeFormat,this))
+    ,fswatcher(new QFileSystemWatcher(this))
+    ,calTimer(new QSystemAlignedTimer(this))
 
+
+{//important to init qsettings like that so it doesn't store in /home/root/ or whatever other account name
+    qDebug() << "starting proximus";
+    fswatcher->addPath("/home/user/.config/FakeCompany/Proximus.conf");
+    connect(fswatcher, SIGNAL(fileChanged(QString)),
+            this, SLOT(rulesStorageChanged()));//don't need the filename passed
     QCoreApplication::setOrganizationName("FakeCompany");
     QCoreApplication::setOrganizationDomain("appcheck.net");
     QCoreApplication::setApplicationName("Proximus");
-    //ptr to dialog
-    //Ruledialog = 0;
-    //fill current rules list,settings from "/net/appcheck/Proximus/";
-//    settings->clear();
-    settings->beginGroup("settings");
-    if (!settings->contains("GPS")) //first run, need to create default settings
-    {
-        settings->setValue("GPS",false);
-    }
-    //ui->chkGPSMode->setChecked(settings->value("GPS",false).toBool());
-    settings->endGroup();
 
-    settings->beginGroup("rules");
-    if (settings->childGroups().count() == 0) //first run, or no rules -- create one example rule
-    {
-        settings->setValue("Example Rule/enabled",(bool)false);
-        settings->setValue("Example Rule/Location/enabled",(bool)true);
-        settings->setValue("Example Rule/Location/NOT",(bool)false);
-        settings->setValue("Example Rule/Location/RADIUS",(double)250);
-        settings->setValue("Example Rule/Location/LONGITUDE",(double)-113.485336);
-        settings->setValue("Example Rule/Location/LATITUDE",(double)53.533064);
-    }
-    settings->endGroup();
+//    settings->beginGroup("settings");
+//    if (!settings->contains("GPS")) //first run, need to create default settings
+//    {
+//        settings->setValue("GPS/enabled",false);
+//        settings->setValue("Service/enabled",true);
+//    }
+//    settings->endGroup();
+
+//    settings->beginGroup("rules");
+//    if (settings->childGroups().count() == 0) //first run, or no rules -- create one example rule
+//    {
+//        settings->setValue("Example Rule/enabled",(bool)false);
+//        settings->setValue("Example Rule/Location/enabled",(bool)true);
+//        settings->setValue("Example Rule/Location/NOT",(bool)false);
+//        settings->setValue("Example Rule/Location/RADIUS",(double)250);
+//        settings->setValue("Example Rule/Location/LONGITUDE",(double)-113.485336);
+//        settings->setValue("Example Rule/Location/LATITUDE",(double)53.533064);
+//    }
+//    settings->endGroup();
  //   ui->txtLog->appendPlainText("Welcome to Proximus beta");
 //    ui->txtLog->appendPlainText("status messages will appear in this area");
-    rulesStorageChanged();//call once now to populate initial rules
-    // Start the GPS
-    startGPS();
 
+    //call once now to populate initial rules
+    rulesStorageChanged();
+
+    //set up timer for calendar,
+    #if defined(Q_WS_MAEMO_5)
+        //worry about this later
+    #else
+        #if defined (Q_WS_SIMULATOR)
+            //
+        #else //harmattan or symbian...
+           // QSystemAlignedTimer *newTimer = new QSystemAlignedTimer(this);
+            connect (calTimer, SIGNAL(timeout()),this,SLOT(updateCalendar()));
+            calTimer->start(60*45,60*60); //timer should fire every 45-60 min
+        #endif
+    #endif
+
+
+
+    qDebug() << "init complete";
 }
 
 Controller::~Controller()
@@ -46,12 +66,12 @@ Controller::~Controller()
 }
 
 void Controller::rulesStorageChanged() {
-
+    qDebug() << "rulesStorageChanged()" << settings->allKeys();
+    startGPS();//since settings could have changed, restart GPS to set the correct positioning method
     //setup memory structure used to keep track of rules being active or not
-    //also recreate qstringlist obj on screen
+
     //as this DOES NOT happen often, it's okay to recreate from scratch
     Rules.clear();
-    //ui->listWidgetRules->clear();
 
     //fill list
     settings->beginGroup("rules");
@@ -61,8 +81,8 @@ void Controller::rulesStorageChanged() {
         if (settings->value("enabled").toBool() == true){//if enabled
             Rule* newRule = new Rule();
             newRule->name = strRuleName;
+            qDebug() << "loaded rule" << strRuleName;
             Rules.insert(strRuleName,newRule);
-            //ui->listWidgetRules->item(ui->listWidgetRules->count() - 1)->setForeground(Qt::green);
             newRule->enabled = true;
             DataLocation* ptrRuleDataLoc = new DataLocation;
             ptrRuleDataLoc->setParent(newRule);
@@ -209,6 +229,7 @@ void Controller::updateCalendar()
 //sets calendar rule to active
 void DataCalendar::activated()
 {
+    qDebug() << "calendar activated";
     if (this->inverseCond == false)
         this->active = true;
     else
@@ -219,6 +240,7 @@ void DataCalendar::activated()
 //sets calendar rule to inactive
 void DataCalendar::deactivated()
 {
+    qDebug() << "calendar deactivated";
     if (this->inverseCond == false)
         this->active = false;
     else
@@ -229,6 +251,7 @@ void DataCalendar::deactivated()
 //sets time rule to active
 void DataTime::activated()
 {
+    qDebug() << "time activated";
     if (this->inverseCond == false)
         this->active = true;
     else
@@ -239,6 +262,7 @@ void DataTime::activated()
 //sets time rule to inactive
 void DataTime::deactivated()
 {
+    qDebug() << " time deactivated";
     if (this->inverseCond == false)
         this->active = false;
     else
@@ -271,8 +295,7 @@ void Controller::startGPS()
         locationDataSource = QGeoPositionInfoSource::createDefaultSource(this);
         if (!locationDataSource){
             // Not able to obtain the location data source
-            // TODO: Error handling
-            //QMessageBox::critical(this,"error","GPS failure");
+            qDebug() << "GPS FAILURE";
             return;
         }
     }
@@ -283,32 +306,27 @@ void Controller::startGPS()
                      this,
                      SLOT(positionUpdated(QGeoPositionInfo)));
 
-    //FIXME
-    //if (ui->chkGPSMode->isChecked())
-    //    locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::NonSatellitePositioningMethods);
-   // else
+
+    if (settings->value("/settings/GPS/enabled",false).toBool()) {
         locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
+        qDebug() << "gps on";
+    }
+    else {
+        locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::NonSatellitePositioningMethods);
+        qDebug() << "gps off";
+    }
+
     // Start listening for position updates
     locationDataSource->startUpdates();
 
-    //set up timer for calendar,
-    #if defined(Q_WS_MAEMO_5)
-        //worry about this later
-    #else
-        #if defined (Q_WS_SIMULATOR)
-            //
-        #else //harmattan or symbian...
-            QSystemAlignedTimer *newTimer = new QSystemAlignedTimer(this);
-            connect (newTimer, SIGNAL(timeout()),this,SLOT(updateCalendar()));
-            newTimer->start(60*45,60*60); //timer should fire every 45-60 min
-        #endif
-    #endif
+
 }
 
 //called any time we activate / deactivate a rule setting
 //this just does some boolean math to check if the whole rule is now active or inactive
 void Controller::checkStatus(Rule* ruleStruct)
 {
+
     bool locationCond = false;
     if (ruleStruct->data.locationRule->enabled)
     {
@@ -338,6 +356,7 @@ void Controller::checkStatus(Rule* ruleStruct)
     bool calendarCond = false;
     if (ruleStruct->data.calendarRule.enabled)
     {
+        qDebug() << "!";
         if (ruleStruct->data.calendarRule.active)
             calendarCond = true;
         else
@@ -347,26 +366,32 @@ void Controller::checkStatus(Rule* ruleStruct)
     }
     else
         calendarCond = true;
-
+    qDebug() << "checkStatus() loc/time/cal " << ruleStruct->name << locationCond << timeCond << calendarCond ;
     bool result = locationCond && timeCond && calendarCond;
     ruleStruct->active = result;
 
-    //should write some info to the status tab
+    //should write some info to the status tab    
+    //if service is supposed to be disabled, just skip this next part.
+    if (settings->value("/settings/Service/enabled",true).toBool() == false){
+        qDebug() << "service supposed to be disabled, skipping actions";
+        return;
+    }
+
     if (result)
     {
         settings->beginGroup("rules");
         settings->beginGroup(ruleStruct->name);
         if (settings->value("Actions/Run/enabled",false).toBool() == true)
         {//run
-
+            qDebug() << "supposed to run something";
         }
         if (settings->value("Actions/Profile/enabled",false).toBool() == true)
         {//set profile
             #ifndef Q_WS_SIMULATOR
+            qDebug() << "attempting to switch to profile '" << settings->value("Actions/Profile/NAME","") << "'";
             //ui->txtLog->appendPlainText("attempt switch to profile " + settings->value("Actions/Profile/NAME","").toString());
             ProfileClient *profileClient = new ProfileClient(this);
             if (!profileClient->setProfile(settings->value("Actions/Profile/NAME","").toString()) )
-               // QMessageBox::information(this,"debug","failed to switch profile!!");
                 qDebug() << "failed to switch profile!!";
             #else
 
@@ -381,9 +406,10 @@ void Controller::checkStatus(Rule* ruleStruct)
 QGeoAreaMonitor * Controller::initAreaMonitor(DataLocation *& Dataloc)
 {
     // Create the area monitor
+    qDebug() << "started create area monitor";
     QGeoAreaMonitor *monitor = QGeoAreaMonitor::createDefaultMonitor(Dataloc);
     if (monitor == NULL){
-        // QMessageBox::critical(this,"error","failed to create monitor");
+        qDebug() << "error - failed to create monitor";
          return NULL;
     }
 
@@ -408,7 +434,7 @@ QGeoAreaMonitor * Controller::initAreaMonitor(DataLocation *& Dataloc)
 
 void DataLocation::areaEntered(const QGeoPositionInfo &update) {
     // The area has been entered
-    // QMessageBox::information(NULL,"debug","entered area",QMessageBox::Ok);
+    qDebug() << "area entered";
     if (this->inverseCond == false)
         this->active = true;
     else
@@ -418,7 +444,7 @@ void DataLocation::areaEntered(const QGeoPositionInfo &update) {
 
 void DataLocation::areaExited(const QGeoPositionInfo &update) {
     // The area has been exited
-    // QMessageBox::information(NULL,"debug","exited area",QMessageBox::Ok);
+    qDebug() << "area exited";
      if (this->inverseCond == false)
          this->active = false;
      else
