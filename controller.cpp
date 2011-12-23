@@ -9,34 +9,16 @@ Controller::Controller(QObject *parent) :
 
 {//important to init qsettings like that so it doesn't store in /home/root/ or whatever other account name
     qDebug() << "starting proximus";
+    qDebug() << "1";
     fswatcher->addPath("/home/user/.config/FakeCompany/Proximus.conf");
+    qDebug() << "2";
     connect(fswatcher, SIGNAL(fileChanged(QString)),
             this, SLOT(rulesStorageChanged()));//don't need the filename passed
+    qDebug() << "3";
     QCoreApplication::setOrganizationName("FakeCompany");
     QCoreApplication::setOrganizationDomain("appcheck.net");
     QCoreApplication::setApplicationName("Proximus");
-
-//    settings->beginGroup("settings");
-//    if (!settings->contains("GPS")) //first run, need to create default settings
-//    {
-//        settings->setValue("GPS/enabled",false);
-//        settings->setValue("Service/enabled",true);
-//    }
-//    settings->endGroup();
-
-//    settings->beginGroup("rules");
-//    if (settings->childGroups().count() == 0) //first run, or no rules -- create one example rule
-//    {
-//        settings->setValue("Example Rule/enabled",(bool)false);
-//        settings->setValue("Example Rule/Location/enabled",(bool)true);
-//        settings->setValue("Example Rule/Location/NOT",(bool)false);
-//        settings->setValue("Example Rule/Location/RADIUS",(double)250);
-//        settings->setValue("Example Rule/Location/LONGITUDE",(double)-113.485336);
-//        settings->setValue("Example Rule/Location/LATITUDE",(double)53.533064);
-//    }
-//    settings->endGroup();
- //   ui->txtLog->appendPlainText("Welcome to Proximus beta");
-//    ui->txtLog->appendPlainText("status messages will appear in this area");
+    qDebug() << "4";
 
     //call once now to populate initial rules
     rulesStorageChanged();
@@ -56,23 +38,24 @@ Controller::Controller(QObject *parent) :
 
 
 
+
     qDebug() << "init complete";
 }
 
 Controller::~Controller()
 {
-    settings->sync();
     delete settings;
 }
 
 void Controller::rulesStorageChanged() {
     qDebug() << "rulesStorageChanged()" << settings->allKeys();
+    qDebug() << "current group is " << settings->group();
     startGPS();//since settings could have changed, restart GPS to set the correct positioning method
     //setup memory structure used to keep track of rules being active or not
 
     //as this DOES NOT happen often, it's okay to recreate from scratch
     Rules.clear();
-
+    settings->sync();//REALLY needed.
     //fill list
     settings->beginGroup("rules");
     Q_FOREACH(const QString &strRuleName, settings->childGroups()){//for each rule
@@ -105,14 +88,16 @@ void Controller::rulesStorageChanged() {
             newRule->data.timeRule.active = false;
             newRule->data.timeRule.enabled = settings->value("Time/enabled").toBool();
             newRule->data.timeRule.inverseCond = settings->value("Time/NOT").toBool();
-            newRule->data.timeRule.time1 = settings->value("Time/TIME1").toTime();
+            newRule->data.timeRule.time1 = settings->value("Time/TIME1").toTime();            
             newRule->data.timeRule.time2 = settings->value("Time/TIME2").toTime();
+            qDebug() << "time1/time2" << newRule->data.timeRule.time1 << newRule->data.timeRule.time2 ;
             //time rule is somewhat simple, we can do it here
             if (newRule->data.timeRule.enabled)
             {
                 qint32 startTimeDiff, endTimeDiff;
                 startTimeDiff = QTime::currentTime().secsTo(newRule->data.timeRule.time1);
                 endTimeDiff = QTime::currentTime().secsTo(newRule->data.timeRule.time2);
+                qDebug()<< "start/end timediff: " << startTimeDiff << endTimeDiff; //27240 //34440
                 if (startTimeDiff < 1)//can be negative if it occured < 12 hrs ago?
                     startTimeDiff = 86400 + startTimeDiff;// if was negative, that's not useful. we take the # seconds in a day (86,400) and subtract the # of seconds ago the event started to get the # of seconds when it starts next.
                 if (endTimeDiff < 1)
@@ -122,15 +107,16 @@ void Controller::rulesStorageChanged() {
                 //ui->txtLog->appendPlainText("timer to deactivate rule set for " + QString::number(endTimeDiff) + "s");
                 if (endTimeDiff < startTimeDiff)//means we are activated right now
                     newRule->data.timeRule.activated();
-                else
+                else {
                     newRule->data.timeRule.activateTimer.start(startTimeDiff * 1000);//convert to ms
                     newRule->data.timeRule.activateTimer.setSingleShot(true);
                    // ui->txtLog->appendPlainText("timer to activate rule set for " +  QString::number(startTimeDiff) + "s");
-                    if (newRule->data.timeRule.inverseCond == true)
-                        {//need to set directly
-                             newRule->data.timeRule.active = true;
-                             checkStatus(newRule);
-                        }
+                    if (newRule->data.timeRule.inverseCond == true) {//need to set directly
+                        qDebug() << "time inverse - should be set active";
+                        //newRule->data.timeRule.active = true;
+                        checkStatus(newRule);
+                    }
+                }
             }
 
             newRule->data.calendarRule.setParent(newRule);
@@ -145,15 +131,20 @@ void Controller::rulesStorageChanged() {
         settings->endGroup();
     }
     settings->endGroup();
-    updateCalendar();
+    updateCalendar(); //call from here so rule changes trigger this again
 }
 
 //triggered by a heartbeat timer object every 45 min or so,
 //checks calendar for any keyword matches and sets more timers to change the rule to active when those become current.
 //if this api made any sense, i could use signals too
 void Controller::updateCalendar()
-{
+{//ugh so this thing opens the current users calendar... root / developer = bad
     QOrganizerManager defaultManager; //provides access to system address book, calendar
+    qDebug() << "params: " << defaultManager.managerParameters().values().count(); // params:  0
+    //qDebug() << "manager: " << defaultManager.managerUri(); // manager:  "qtorganizer:mkcal:"
+    QMap<QString, QString> parameters;
+    parameters["filename"] = "/home/user/.calendar/db"; // database??
+    //QOrganizerManager userManager("",parameters);
     //get list of all upcoming calendar events
     QList<QOrganizerItem> entries =
              defaultManager.items(QDateTime::currentDateTime(),//not sure if this returns events already started
@@ -164,13 +155,17 @@ void Controller::updateCalendar()
         QString keywords = ruleStruct->data.calendarRule.keywords;
         //seperate keywords string into list of keywords
         QStringList keywordList = keywords.split(" ");
+        qDebug() << "found # keywords: " << keywordList.count();
         //then loop through all the upcoming calendar events
+        qDebug() << "searching " << entries.count() << "calendar entries for the next hour";
         Q_FOREACH(QOrganizerItem orgItem, entries){
             //and each individual keyword
             Q_FOREACH(QString keyword, keywordList){
-                if (orgItem.displayLabel().toLower().contains(keyword) || orgItem.description().toLower().contains(keyword)) {
+                qDebug() << "check for keyword " << keyword;
+                if (orgItem.displayLabel().contains(keyword, Qt::CaseInsensitive) || orgItem.description().contains(keyword, Qt::CaseInsensitive)) {
                     //keyword match, set up timer to activate this rule
                     foundMatch = true;
+                    qDebug() << "keyword match";
                     //find seconds until event
                     qint16 startTimeDiff, endTimeDiff;
                     QOrganizerEventTime eventTime = orgItem.detail<QOrganizerEventTime>();
@@ -315,6 +310,7 @@ void Controller::startGPS()
         locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::NonSatellitePositioningMethods);
         qDebug() << "gps off";
     }
+    locationDataSource->setUpdateInterval(settings->value("/settings/GPS/enabled",60).toInt() * 1000);
 
     // Start listening for position updates
     locationDataSource->startUpdates();

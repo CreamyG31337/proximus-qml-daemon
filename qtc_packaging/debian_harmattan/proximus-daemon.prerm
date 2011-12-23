@@ -1,3 +1,4 @@
 #! /bin/sh
 stop apps/proximus-daemon
+rm /var/log/proximuslog.txt
 exit 0
