@@ -1,16 +1,29 @@
 <aegis>
-    <request>
-        <!-- QtMobility.organizer -->
-        <credential name="GRP::calendar" />
-        <credential name="GRP::metadata-users" />
-        <credential name="TrackerReadAccess" />
-        <credential name="TrackerWriteAccess" />
-        <!-- QtMobility.location -->
-        <credential name="Location" />
-        <!-- QtMobility.systeminfo -->
-        <credential name="Cellular" />
-        <credential name="mce::DeviceModeControl" />
-        <credential name="mce::TKLockControl" />
-        <for path="/usr/local/bin/proximus-daemon" />
-    </request>
+	<request policy="add">
+		<!-- Application accesses DBus libraries directly. -->
+
+		<!-- QtMobility::QOrganizerManager::QOrganizerManager -->
+		<credential name="GRP::calendar" />
+		<credential name="GRP::metadata-users" />
+
+		<!-- QtMobility::QGeoCoordinate::QGeoCoordinate -->
+		<!-- QtMobility::QGeoPositionInfoSource::createDefaultSource -->
+		<!-- QtMobility::QGeoSatelliteInfoSource::createDefaultSource -->
+		<!-- QtMobility::QGeoCoordinate::latitude -->
+		<!-- QtMobility::QGeoCoordinate::longitude -->
+		<credential name="Location" />
+
+		<!-- QtMobility::QGeoCoordinate::QGeoCoordinate -->
+		<!-- QtMobility::QGeoPositionInfoSource::createDefaultSource -->
+		<!-- QtMobility::QGeoSatelliteInfoSource::createDefaultSource -->
+		<!-- QtMobility::QGeoCoordinate::latitude -->
+		<!-- QtMobility::QGeoCoordinate::longitude -->
+		<!-- QtMobility::QOrganizerManager::QOrganizerManager -->
+		<credential name="TrackerReadAccess" />
+		<credential name="TrackerWriteAccess" />
+		<credential name="UID::user" />
+		<credential name="GID::users" />
+		<credential name="GRP::users" />
+		<for path="/usr/local/bin/proximus-daemon" />
+	</request>
 </aegis>

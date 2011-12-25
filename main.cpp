@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
 
-    qInstallMsgHandler(customMessageHandler);
+//    qInstallMsgHandler(customMessageHandler);
     Controller controller;
 //    MainWindow mainWindow;
 //    mainWindow.setOrientation(MainWindow::ScreenOrientationAuto);

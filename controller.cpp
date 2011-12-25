@@ -9,17 +9,12 @@ Controller::Controller(QObject *parent) :
 
 {//important to init qsettings like that so it doesn't store in /home/root/ or whatever other account name
     qDebug() << "starting proximus";
-    qDebug() << "1";
     fswatcher->addPath("/home/user/.config/FakeCompany/Proximus.conf");
-    qDebug() << "2";
     connect(fswatcher, SIGNAL(fileChanged(QString)),
             this, SLOT(rulesStorageChanged()));//don't need the filename passed
-    qDebug() << "3";
     QCoreApplication::setOrganizationName("FakeCompany");
     QCoreApplication::setOrganizationDomain("appcheck.net");
     QCoreApplication::setApplicationName("Proximus");
-    qDebug() << "4";
-
     //call once now to populate initial rules
     rulesStorageChanged();
 

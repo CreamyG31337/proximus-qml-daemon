@@ -31,14 +31,14 @@ MOBILITY += organizer
 OTHER_FILES += \
     qtc_packaging/debian_harmattan/rules \
     qtc_packaging/debian_harmattan/README \
-    qtc_packaging/debian_harmattan/manifest.aegis \
     qtc_packaging/debian_harmattan/copyright \
     qtc_packaging/debian_harmattan/control \
     qtc_packaging/debian_harmattan/compat \
     qtc_packaging/debian_harmattan/changelog \
     qtc_packaging/debian_harmattan/proximus-daemon.postinst \
     qtc_packaging/debian_harmattan/proximus-daemon.prerm \
-    qtc_packaging/debian_harmattan/proximus-daemon.preinst
+    qtc_packaging/debian_harmattan/proximus-daemon.preinst \
+    qtc_packaging/debian_harmattan/manifest.aegis.bak
 
 INCLUDEPATH += /usr/include/qt4
 INCLUDEPATH += /usr/include/applauncherd
