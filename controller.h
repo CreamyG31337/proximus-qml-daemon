@@ -44,12 +44,13 @@ class DataLocation : public QObject
     Q_OBJECT
 public:
     explicit DataLocation();//constructor
+    virtual ~DataLocation();
     bool enabled;
     bool inverseCond;
     bool active;//active means the conditions are all true
     QGeoCoordinate location;
     qint16 radius;
-    QGeoAreaMonitor *areaMon;
+    QPointer<QGeoAreaMonitor> areaMon;
 public Q_SLOTS:
     /**
      * Called when the current position is in range of the area.
@@ -98,9 +99,9 @@ Q_SIGNALS:
 };
 struct RuleData
 {
-    //constructor
     explicit RuleData();
-    DataLocation* locationRule;
+    virtual ~RuleData();
+    QPointer<DataLocation> locationRule;
     DataTime timeRule;
     DataCalendar calendarRule;
 };
@@ -108,15 +109,13 @@ class Rule : public QObject
 {
     Q_OBJECT
 public:
-    //constructor
     explicit Rule();
+    virtual ~Rule();
     QString name;
     bool enabled;
     bool active;
     RuleData data;
 };
-
-
 
 class Controller : public QObject
 {

@@ -31,26 +31,38 @@ Controller::Controller(QObject *parent) :
         #endif
     #endif
 
-
-
-
     qDebug() << "init complete";
 }
 
 Controller::~Controller()
 {
     delete settings;
+    delete fswatcher;
+    delete calTimer;
+    delete satelliteInfoSource;
 }
 
 void Controller::rulesStorageChanged() {
+    settings->sync();//REALLY needed, first!
     qDebug() << "rulesStorageChanged()" << settings->allKeys();
+    //if service is supposed to be disabled, just exit
+    if (settings->value("/settings/Service/enabled",true).toBool() == false){
+        qDebug() << "service supposed to be disabled, exiting";
+        exit(0);
+    }
     qDebug() << "current group is " << settings->group();
     startGPS();//since settings could have changed, restart GPS to set the correct positioning method
     //setup memory structure used to keep track of rules being active or not
 
     //as this DOES NOT happen often, it's okay to recreate from scratch
+    //delete them properly before losing the references though
+    foreach(Rule* deadRule, Rules){
+        qDebug() << "killing " << deadRule->name;
+        delete deadRule;
+    }
+
     Rules.clear();
-    settings->sync();//REALLY needed.
+
     //fill list
     settings->beginGroup("rules");
     Q_FOREACH(const QString &strRuleName, settings->childGroups()){//for each rule
@@ -83,7 +95,7 @@ void Controller::rulesStorageChanged() {
             newRule->data.timeRule.active = false;
             newRule->data.timeRule.enabled = settings->value("Time/enabled").toBool();
             newRule->data.timeRule.inverseCond = settings->value("Time/NOT").toBool();
-            newRule->data.timeRule.time1 = settings->value("Time/TIME1").toTime();            
+            newRule->data.timeRule.time1 = settings->value("Time/TIME1").toTime();
             newRule->data.timeRule.time2 = settings->value("Time/TIME2").toTime();
             qDebug() << "time1/time2" << newRule->data.timeRule.time1 << newRule->data.timeRule.time2 ;
             //time rule is somewhat simple, we can do it here
@@ -317,7 +329,6 @@ void Controller::startGPS()
 //this just does some boolean math to check if the whole rule is now active or inactive
 void Controller::checkStatus(Rule* ruleStruct)
 {
-
     bool locationCond = false;
     if (ruleStruct->data.locationRule->enabled)
     {
@@ -347,7 +358,6 @@ void Controller::checkStatus(Rule* ruleStruct)
     bool calendarCond = false;
     if (ruleStruct->data.calendarRule.enabled)
     {
-        qDebug() << "!";
         if (ruleStruct->data.calendarRule.active)
             calendarCond = true;
         else
@@ -362,11 +372,6 @@ void Controller::checkStatus(Rule* ruleStruct)
     ruleStruct->active = result;
 
     //should write some info to the status tab    
-    //if service is supposed to be disabled, just skip this next part.
-    if (settings->value("/settings/Service/enabled",true).toBool() == false){
-        qDebug() << "service supposed to be disabled, skipping actions";
-        return;
-    }
 
     if (result)
     {
@@ -379,11 +384,11 @@ void Controller::checkStatus(Rule* ruleStruct)
         if (settings->value("Actions/Profile/enabled",false).toBool() == true)
         {//set profile
             #ifndef Q_WS_SIMULATOR
-            qDebug() << "attempting to switch to profile '" << settings->value("Actions/Profile/NAME","") << "'";
-            //ui->txtLog->appendPlainText("attempt switch to profile " + settings->value("Actions/Profile/NAME","").toString());
+            qDebug() << "attempting to switch to profile " << settings->value("Actions/Profile/NAME","").toString();
             ProfileClient *profileClient = new ProfileClient(this);
             if (!profileClient->setProfile(settings->value("Actions/Profile/NAME","").toString()) )
                 qDebug() << "failed to switch profile!!";
+            delete profileClient;
             #else
 
             #endif
@@ -445,22 +450,32 @@ void DataLocation::areaExited(const QGeoPositionInfo &update) {
 
 Rule::Rule()
 {
+}
 
+Rule::~Rule()
+{
 }
 
 RuleData::RuleData()
     :locationRule(new DataLocation)
 {
-//init ptr to datalocation obj
-
+}
+RuleData::~RuleData()
+{
+    if (locationRule)
+        delete locationRule;
 }
 
 DataLocation::DataLocation()
-    //:areaMon(new QGeoAreaMonitor::createDefaultMonitor())
 {
-
 }
-
+DataLocation::~DataLocation()
+{
+    if (areaMon)
+    {
+        delete areaMon;
+    }
+}
 
 void Controller::startSatelliteMonitor()
 {
@@ -508,104 +523,3 @@ void Controller::satellitesInViewUpdated(
 //    msgBox.exec();
 }
 
-//void MainWindow::on_btnNewRule_clicked()
-//{
-//    qint8 intRuleToEdit =  ui->listWidgetRules->count() + 1;
-//    if (Ruledialog == 0)
-//    {
-//        Ruledialog =  new Rule1(topLevelWidget(),"Rule " +  QString::number(intRuleToEdit),locationDataSource,settings);
-//    }
-//    #ifdef Q_OS_SYMBIAN
-//         Ruledialog->showFullScreen();//modeless to keep GPS running
-//    #elif defined(Q_WS_MAEMO_5) || defined(Q_WS_MAEMO_6)
-//         Ruledialog->showMaximized();//modeless to keep GPS running
-//    #else
-//         Ruledialog->show();//modeless to keep GPS running
-//    #endif
-//     //when child is destroyed we update the rules, although we shouldn't if they hit cancel, we do anyways...
-//     connect(Ruledialog,
-//             SIGNAL(destroyed()),
-//             this,
-//             SLOT(rulesStorageChanged())
-//             );
-//}
-
-//void MainWindow::on_chkGPSMode_clicked()
-//{
-//    settings->setValue("settings/GPS",ui->chkGPSMode->isChecked());
-//    startGPS();//(restart)
-//}
-
-//void MainWindow::on_btnEdit_clicked()
-//{
-//    if (!ui->listWidgetRules->currentItem()) return;//no item selected; could show messagebox, if even possible to end up in this situation
-//    if (Ruledialog == 0)
-//    {
-//        Ruledialog =  new Rule1(window(), ui->listWidgetRules->currentItem()->text(),locationDataSource,settings);
-//    }
-//    #ifdef Q_OS_SYMBIAN
-//         Ruledialog->showFullScreen();//modeless to keep GPS running
-//    #elif defined(Q_WS_MAEMO_5) || defined(Q_WS_MAEMO_6)
-//         Ruledialog->showMaximized();//modeless to keep GPS running
-//    #else
-//         Ruledialog->show();//modeless to keep GPS running
-//    #endif
-//     //when child is destroyed we update the rules, although we shouldn't if they hit cancel, we do anyways...
-//     connect(Ruledialog,
-//             SIGNAL(destroyed()),
-//             this,
-//             SLOT(rulesStorageChanged())
-//             );
-//}
-
-//void MainWindow::on_btnDelete_clicked()
-//{
-//    if (!ui->listWidgetRules->currentItem()) return;//no item selected; could show messagebox, if even possible to end up in this situation
-//    int ret = (QMessageBox::question(this,
-//                             "Please confirm",
-//                             "Do you wish to delete rule: '"+ ui->listWidgetRules->currentItem()->text()+"'",
-//                             QMessageBox::Yes | QMessageBox::No,
-//                             QMessageBox::No)
-//              );
-//    if (ret == QMessageBox::Yes){
-//        settings->remove("rules/" + ui->listWidgetRules->currentItem()->text());
-//    }
-//    settings->sync();
-//    rulesStorageChanged();
-//}
-
-//void MainWindow::on_listWidgetRules_currentTextChanged(const QString &currentText)
-//{
-//    if (currentText.isNull())//nothing selected
-//    {
-//        ui->btnDelete->setEnabled(false);
-//        ui->btnEnable->setEnabled(false);
-//        ui->btnEdit->setEnabled(false);
-//        return;
-//    }
-//    else
-//    {
-//        ui->btnDelete->setEnabled(true);
-//        ui->btnEnable->setEnabled(true);
-//        ui->btnEdit->setEnabled(true);
-//    }
-//    if (settings->value("rules/" + currentText + "/enabled").toBool())//enabled
-//        ui->btnEnable->setText("Disable");
-//    else//disabled
-//        ui->btnEnable->setText("Enable");
-//}
-
-//void MainWindow::on_btnEnable_clicked()
-//{
-//    QString curr = ui->listWidgetRules->currentItem()->text();
-//    if ( ui->btnEnable->text() == "Enable"){
-//        settings->setValue("rules/" + curr + "/enabled",true);
-//        ui->listWidgetRules->currentItem()->setForeground(Qt::green);
-//        ui->btnEnable->setText("Disable");
-//    }
-//    else {
-//        settings->setValue("rules/" + curr + "/enabled",false);
-//        ui->listWidgetRules->currentItem()->setForeground(Qt::red);
-//        ui->btnEnable->setText("Enable");
-//    }
-//}
