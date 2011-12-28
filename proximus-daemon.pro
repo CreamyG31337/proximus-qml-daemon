@@ -38,7 +38,8 @@ OTHER_FILES += \
     qtc_packaging/debian_harmattan/proximus-daemon.postinst \
     qtc_packaging/debian_harmattan/proximus-daemon.prerm \
     qtc_packaging/debian_harmattan/proximus-daemon.preinst \
-    qtc_packaging/debian_harmattan/manifest.aegis.bak
+    qtc_packaging/debian_harmattan/manifest.aegis.bak \
+    qtc_packaging/debian_harmattan/manifest.aegis
 
 INCLUDEPATH += /usr/include/qt4
 INCLUDEPATH += /usr/include/applauncherd

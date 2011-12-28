@@ -132,17 +132,17 @@ public Q_SLOTS:
     /**
      * Called when the current position is updated.
      */
-    void positionUpdated(QGeoPositionInfo geoPositionInfo);
+//    void positionUpdated(QGeoPositionInfo geoPositionInfo);
     /**
      * Called when the number of satellites in use is updated.
      */
-    void satellitesInUseUpdated(
-            const QList<QGeoSatelliteInfo> &satellites);
-    /**
-     * Called when the number of satellites in view is updated.
-     */
-    void satellitesInViewUpdated(
-            const QList<QGeoSatelliteInfo> &satellites);
+//    void satellitesInUseUpdated(
+//            const QList<QGeoSatelliteInfo> &satellites);
+//    /**
+//     * Called when the number of satellites in view is updated.
+//     */
+//    void satellitesInViewUpdated(
+//            const QList<QGeoSatelliteInfo> &satellites);
 
 private Q_SLOTS:
     /**
@@ -152,7 +152,7 @@ private Q_SLOTS:
     /**
      * Starts to monitor updates in the number of satellites.
      */
-    void startSatelliteMonitor();
+//    void startSatelliteMonitor();
 
     void updateCalendar();
 
@@ -172,6 +172,8 @@ private:
     QHash<QString, Rule*> Rules;
     QPointer<QFileSystemWatcher> fswatcher;
     QPointer<QSystemAlignedTimer> calTimer;
+
+    QOrganizerManager defaultManager;
 };
 
 #endif // CONTROLLER_H

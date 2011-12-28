@@ -44,13 +44,13 @@ Controller::~Controller()
 
 void Controller::rulesStorageChanged() {
     settings->sync();//REALLY needed, first!
-    qDebug() << "rulesStorageChanged()" << settings->allKeys();
+//    qDebug() << "rulesStorageChanged()" << settings->allKeys();
     //if service is supposed to be disabled, just exit
     if (settings->value("/settings/Service/enabled",true).toBool() == false){
         qDebug() << "service supposed to be disabled, exiting";
         exit(0);
     }
-    qDebug() << "current group is " << settings->group();
+//    qDebug() << "current group is " << settings->group();
     startGPS();//since settings could have changed, restart GPS to set the correct positioning method
     //setup memory structure used to keep track of rules being active or not
 
@@ -77,8 +77,8 @@ void Controller::rulesStorageChanged() {
             DataLocation* ptrRuleDataLoc = new DataLocation;
             ptrRuleDataLoc->setParent(newRule);
             newRule->data.locationRule = ptrRuleDataLoc;
-            connect(newRule->data.locationRule, SIGNAL(activeChanged(Rule*)),
-                    this,SLOT(checkStatus(Rule*)));
+//            connect(newRule->data.locationRule, SIGNAL(activeChanged(Rule*)),
+//                    this,SLOT(checkStatus(Rule*)));
 
             //fill them -- TODO: need to check if the paths exist, default them
             ptrRuleDataLoc->active = false;//we can default the status to false, it will be re-evaluated within a minute
@@ -146,11 +146,11 @@ void Controller::rulesStorageChanged() {
 //if this api made any sense, i could use signals too
 void Controller::updateCalendar()
 {//ugh so this thing opens the current users calendar... root / developer = bad
-    QOrganizerManager defaultManager; //provides access to system address book, calendar
-    qDebug() << "params: " << defaultManager.managerParameters().values().count(); // params:  0
+//    QOrganizerManager defaultManager(this); //provides access to system address book, calendar
+   // qDebug() << "params: " << defaultManager.managerParameters().values().count(); // params:  0
     //qDebug() << "manager: " << defaultManager.managerUri(); // manager:  "qtorganizer:mkcal:"
-    QMap<QString, QString> parameters;
-    parameters["filename"] = "/home/user/.calendar/db"; // database??
+   // QMap<QString, QString> parameters;
+   // parameters["filename"] = "/home/user/.calendar/db"; // database??
     //QOrganizerManager userManager("",parameters);
     //get list of all upcoming calendar events
     QList<QOrganizerItem> entries =
@@ -272,24 +272,6 @@ void DataTime::deactivated()
     Q_EMIT activeChanged((Rule*)this->parent());
 }
 
-void Controller::positionUpdated(QGeoPositionInfo geoPositionInfo)
-{
-    if (geoPositionInfo.isValid())
-    {
-        //gps never stops
-        //locationDataSource->setUpdateInterval(30*1000);//30 sec //TODO: for meego we should sync this to WAKEUP_SLOT_30_SEC in MeeGo::QmHeartbeat
-        // Get the current location as latitude and longitude
-        QGeoCoordinate geoCoordinate = geoPositionInfo.coordinate();
-        qreal latitude = geoCoordinate.latitude();
-        qreal longitude = geoCoordinate.longitude();
-//        ui->lblLongitude->setText(QString::number(longitude));
-//        ui->lblLatitude->setText(QString::number(latitude));
-//        ui->lblLastUpdatedTime->setText(geoPositionInfo.timestamp().toString());
-//        ui->lblAccuracy->setText(QString::number(geoPositionInfo.attribute(QGeoPositionInfo::HorizontalAccuracy)) + "m");
-        //qDebug() << Rules["Example Rule"]->data.timeRule.time1;
-    }
-}
-
 void Controller::startGPS()
 {
     // Obtain the location data source if it is not obtained already
@@ -299,30 +281,28 @@ void Controller::startGPS()
             // Not able to obtain the location data source
             qDebug() << "GPS FAILURE";
             return;
-        }
+            }
     }
-    // Whenever the location data source signals that the current
-    // position is updated, the positionUpdated function is called.
-    QObject::connect(locationDataSource,
-                     SIGNAL(positionUpdated(QGeoPositionInfo)),
-                     this,
-                     SLOT(positionUpdated(QGeoPositionInfo)));
 
 
     if (settings->value("/settings/GPS/enabled",false).toBool()) {
-        locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
+        if (locationDataSource->preferredPositioningMethods() != QGeoPositionInfoSource::AllPositioningMethods)
+            locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::AllPositioningMethods);
+        else
+            qDebug() << "skipped gps method set";
         qDebug() << "gps on";
     }
     else {
-        locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::NonSatellitePositioningMethods);
+        if (locationDataSource->preferredPositioningMethods() != QGeoPositionInfoSource::NonSatellitePositioningMethods)
+            locationDataSource->setPreferredPositioningMethods(QGeoPositionInfoSource::NonSatellitePositioningMethods);
+        else
+            qDebug() << "skipped gps method set";
         qDebug() << "gps off";
     }
     locationDataSource->setUpdateInterval(settings->value("/settings/GPS/enabled",60).toInt() * 1000);
 
     // Start listening for position updates
     locationDataSource->startUpdates();
-
-
 }
 
 //called any time we activate / deactivate a rule setting
@@ -476,50 +456,3 @@ DataLocation::~DataLocation()
         delete areaMon;
     }
 }
-
-void Controller::startSatelliteMonitor()
-{
-    satelliteInfoSource =
-        QGeoSatelliteInfoSource::createDefaultSource(this);
-    // Whenever the satellite info source signals that the number of
-    // satellites in use is updated, the satellitesInUseUpdated function
-    // is called
-    QObject::connect(satelliteInfoSource,
-                     SIGNAL(satellitesInUseUpdated(
-                             const QList<QGeoSatelliteInfo>&)),
-                     this,
-                     SLOT(satellitesInUseUpdated(
-                             const QList<QGeoSatelliteInfo>&)));
-
-    // Whenever the satellite info source signals that the number of
-    // satellites in view is updated, the satellitesInViewUpdated function
-    // is called
-    QObject::connect(satelliteInfoSource,
-                     SIGNAL(satellitesInViewUpdated(
-                             const QList<QGeoSatelliteInfo>&)),
-                     this,
-                     SLOT(satellitesInViewUpdated(
-                             const QList<QGeoSatelliteInfo>&)));
-
-    // Start listening for satellite updates
-    satelliteInfoSource->startUpdates();
-}
-
-void Controller::satellitesInUseUpdated(
-        const QList<QGeoSatelliteInfo> &satellites) {
-    // The number of satellites in use is updated
-//    QMessageBox msgBox;
-//    msgBox.setText("The number of satellites in use is updated: " +
-//                   QString::number(satellites.count()));
-//    msgBox.exec();
-}
-
-void Controller::satellitesInViewUpdated(
-        const QList<QGeoSatelliteInfo> &satellites) {
-    // The number of satellites in view is updated
-//    QMessageBox msgBox;
-//    msgBox.setText("The number of satellites in view is updated: " +
-//                   QString::number(satellites.count()));
-//    msgBox.exec();
-}
-
